@@ -1,37 +1,77 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
+import { Redirect, router, SplashScreen, Stack } from "expo-router";
+import { useEffect, useState } from "react";
+import auth from "@react-native-firebase/auth";
+import { withExpoSnack } from "nativewind";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { useFonts } from "expo-font";
+import ToastProvider from "@/providers/ToastProvider";
+import Loader from "@/components/Loader";
 
-import { useColorScheme } from '@/hooks/useColorScheme';
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
-
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+const RootLayout = () => {
+  // Set an initializing state whilst Firebase connects
+  const [initializing, setInitializing] = useState(true);
+  const [user, setUser] = useState(null);
+  const [loaded, error] = useFonts({
+    "Montserrat-Regular": require("./../assets/fonts/Montserrat-Regular.ttf"),
+    "Montserrat-Medium": require("./../assets/fonts/Montserrat-Medium.ttf"),
+    "Montserrat-SemiBold": require("./../assets/fonts/Montserrat-SemiBold.ttf"),
+    "SpaceMono-Regular": require("./../assets/fonts/SpaceMono-Regular.ttf"),
   });
 
   useEffect(() => {
-    if (loaded) {
+    if (loaded || error) {
       SplashScreen.hideAsync();
     }
-  }, [loaded]);
+  }, [loaded, error]);
 
-  if (!loaded) {
-    return null;
+  // Handle user state changes
+  function onAuthStateChanged(user) {
+    setUser(user);
+    if (initializing) setInitializing(false);
   }
 
+  useEffect(() => {
+    const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
+    return subscriber; // unsubscribe on unmount
+  }, []);
+
+  useEffect(() => {
+    console.log("USER DATA");
+    console.log(user);
+    if (!initializing && user && loaded) {
+      router.replace("/(auth)/home");
+    }
+  }, [user, loaded, initializing]);
+
+  if (initializing || !loaded) return <Loader />;
+
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ToastProvider>
+        <Stack>
+          <Stack.Screen
+            name="index"
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="forgotPassword"
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="(auth)"
+            options={{
+              headerShown: false,
+            }}
+          />
+        </Stack>
+      </ToastProvider>
+    </SafeAreaProvider>
   );
-}
+};
+// export default withExpoSnack(RootLayout);
+export default RootLayout;
