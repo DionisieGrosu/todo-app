@@ -6,6 +6,7 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useFonts } from "expo-font";
 import ToastProvider from "@/providers/ToastProvider";
 import Loader from "@/components/Loader";
+import { MenuProvider } from "react-native-popup-menu";
 
 SplashScreen.preventAutoHideAsync();
 const RootLayout = () => {
@@ -17,6 +18,7 @@ const RootLayout = () => {
     "Montserrat-Medium": require("./../assets/fonts/Montserrat-Medium.ttf"),
     "Montserrat-SemiBold": require("./../assets/fonts/Montserrat-SemiBold.ttf"),
     "SpaceMono-Regular": require("./../assets/fonts/SpaceMono-Regular.ttf"),
+    "BebasNeue-Regular": require("./../assets/fonts/BebasNeue-Regular.ttf"),
   });
 
   useEffect(() => {
@@ -49,26 +51,28 @@ const RootLayout = () => {
   return (
     <SafeAreaProvider>
       <ToastProvider>
-        <Stack>
-          <Stack.Screen
-            name="index"
-            options={{
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name="forgotPassword"
-            options={{
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name="(auth)"
-            options={{
-              headerShown: false,
-            }}
-          />
-        </Stack>
+        <MenuProvider>
+          <Stack>
+            <Stack.Screen
+              name="index"
+              options={{
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="forgotPassword"
+              options={{
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="(auth)"
+              options={{
+                headerShown: false,
+              }}
+            />
+          </Stack>
+        </MenuProvider>
       </ToastProvider>
     </SafeAreaProvider>
   );

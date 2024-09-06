@@ -24,6 +24,8 @@ import { type } from "../utils/types";
 import auth from "@react-native-firebase/auth";
 import Loader from "@/components/Loader";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
+
 export default function Index() {
   const [isSignup, setIsSignup] = useState(false);
   const [loading, setLoading] = useState(true);

@@ -1,6 +1,17 @@
 import auth from "@react-native-firebase/auth";
-import firestore from "@react-native-firebase/firestore";
-import { ResetPassword, SignIn, SignUp } from "./types";
+import firestore, {
+  FirebaseFirestoreTypes,
+} from "@react-native-firebase/firestore";
+import {
+  AddTodo,
+  DeleteTodo,
+  EditTodo,
+  GetTodo,
+  ResetPassword,
+  SignIn,
+  SignUp,
+} from "./types";
+import moment from "moment";
 
 export const signIn = ({ email, password }: SignIn) => {
   return new Promise((resolve, reject) => {
@@ -89,8 +100,8 @@ export const signUp = async ({
         .collection("Users")
         .doc(checkUser?.docs[0].id)
         .update({
+          email: email,
           fullName: fullName,
-          password: password,
         })
         .then((result) => {
           auth()
@@ -152,7 +163,6 @@ export const signUp = async ({
         .add({
           fullName: fullName,
           email: email,
-          password: password,
         })
         .then((result) => {
           auth()
@@ -251,6 +261,181 @@ export const resetPassword = ({ email }: ResetPassword) => {
         console.log("GET USER ERROR");
         console.log(error);
         reject({ success: false, message: "User not found! Please Sign up" });
+      });
+  });
+};
+
+export const getTodos = (filter: "all" | "by_time" | "by_deadline" = "all") => {
+  return new Promise((resolve, reject) => {
+    let queryResult = firestore().collection("Todos");
+    if (filter == "by_time") {
+      queryResult = queryResult.where("date", "==", "");
+    }
+    if (filter == "by_deadline") {
+      queryResult = queryResult.where("date", "!=", "");
+    }
+    queryResult
+      .get()
+      .then((result) => {
+        let TodosData: FirebaseFirestoreTypes.DocumentData[] = [];
+        result.docs.map((item) => {
+          TodosData.push({ ...item.data(), id: item.id });
+        });
+        resolve({ success: true, data: TodosData });
+      })
+      .catch((error) => {
+        console.log("ERROR WHILE TRYING TO GET ALL TODOS");
+        console.log(error);
+        reject({
+          success: false,
+          message: "Something went wrong while trying to get todos",
+        });
+      });
+  });
+};
+
+export const getTodoById = ({ id }: { id: string }) => {
+  return new Promise((resolve, reject) => {
+    firestore()
+      .collection("Todos")
+      .doc(id)
+      .get()
+      .then((result) => {
+        if (result.exists) {
+          resolve({ success: true, data: { ...result.data(), id: id } });
+        } else {
+          reject({ success: false, message: "Data is empty" });
+        }
+      })
+      .catch((error) => {
+        console.log("ERROR WHILE TRYING TO GET TODO");
+        console.log(error);
+        reject({
+          success: false,
+          message: "Something went wrong while trying to get todo",
+        });
+      });
+  });
+};
+
+export const addNewTodo = ({ title, description, date = "" }: AddTodo) => {
+  return new Promise(async (resolve, reject) => {
+    firestore()
+      .collection("Todos")
+      .add({
+        title,
+        description,
+        date,
+        createdAt: moment().format("YYYY-MM-DD"),
+      })
+      .then(() => {
+        firestore()
+          .collection("Todos")
+          .get()
+          .then((result) => {
+            console.log("ADDED TODO RESULT DATA");
+            console.log(result.docs[0].data);
+            let resultData: FirebaseFirestoreTypes.DocumentData[] = [];
+            result.docs.map((item) => {
+              resultData.push({ ...item.data(), id: item.id });
+            });
+            resolve({ success: true, data: resultData });
+          })
+          .catch((error) => {
+            console.log("GET TODO ERROR");
+            console.log(error);
+            reject({
+              success: false,
+              message: "Somethng went wrong while trying to get todos",
+            });
+          });
+      })
+      .catch((addError) => {
+        console.log("ADD TODO ERROR");
+        console.log(addError);
+        reject({
+          success: false,
+          message: "Somethng went wrong while trying to add todo",
+        });
+      });
+  });
+};
+
+export const editTodo = ({ id, title, description, date = "" }: EditTodo) => {
+  return new Promise(async (resolve, reject) => {
+    firestore()
+      .collection("Todos")
+      .doc(id)
+      .update({
+        title,
+        description,
+        date,
+      })
+      .then(() => {
+        firestore()
+          .collection("Todos")
+          .doc(id)
+          .get()
+          .then((result) => {
+            if (result.data()) {
+              resolve({
+                success: true,
+                data: { ...result.data(), id: result.id },
+              });
+            } else {
+              reject({ success: false, message: "Data is empty" });
+            }
+          })
+          .catch((error) => {
+            console.log("GET TODO ERROR");
+            console.log(error);
+            reject({
+              success: false,
+              message: "Something went wrong while trying to get todo",
+            });
+          });
+        // firestore()
+        //   .collection("Todo")
+        //   .get()
+        //   .then((result) => {
+        //     resolve({ success: true, data: result.docs });
+        //   })
+        //   .catch((error) => {
+        //     console.log("GET TODO ERROR");
+        //     console.log(error);
+        //     reject({
+        //       success: false,
+        //       message: "Somethng went wrong while trying to get todos",
+        //     });
+        //   });
+      })
+      .catch((addError) => {
+        console.log("ADD TODO ERROR");
+        console.log(addError);
+        reject({
+          success: false,
+          message: "Somethng went wrong while trying to add todo",
+        });
+      });
+  });
+};
+
+export const deleteTodo = ({ id }: DeleteTodo) => {
+  return new Promise((resolve, reject) => {
+    firestore()
+      .collection("Todos")
+      .doc(id)
+      .delete()
+      .then((result) => {
+        resolve({ success: true, message: "Todo was deleted successfuly!" });
+      })
+      .catch((error) => {
+        console.log("ERROR WHILE TRYING TO DELETE TODO");
+        console.log(error);
+        reject({
+          success: false,
+          message: "Something went wrong while trying to delete todo",
+        });
       });
   });
 };

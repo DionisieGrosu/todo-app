@@ -9,6 +9,9 @@ type Props = {
   type?: "password" | "text" | "email";
   onInputHandler: any;
   error?: boolean;
+  styleType?: "normal" | "white";
+  textarea?: boolean;
+  inputClasses?: string;
 };
 function CustomInput({
   label,
@@ -16,12 +19,19 @@ function CustomInput({
   type = "text",
   onInputHandler,
   error = false,
+  styleType = "normal",
+  textarea = false,
+  inputClasses = "",
 }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   return (
     <View
-      className={`flex w-full px-[16px] flex-row justify-between py-[10px] rounded-[12px] border-[1px] ${
-        error ? "border-red-500" : "border-[#272727]"
+      className={`flex items-start w-full px-[16px] flex-row justify-between py-[10px] rounded-[12px] border-[1px] ${inputClasses} ${
+        error
+          ? "border-red-500"
+          : styleType == "normal"
+          ? "border-[#272727]"
+          : "border-white"
       }`}
       style={{ marginBottom: 16 }}
     >
@@ -31,6 +41,8 @@ function CustomInput({
         autoComplete={type == "email" ? "email" : "off"}
         secureTextEntry={type == "password" && !showPassword}
         placeholder={label}
+        multiline={textarea ? true : false}
+        textAlignVertical={textarea ? "top" : "center"}
         style={[
           {
             fontFamily: "Montserrat-Regular",
@@ -41,8 +53,10 @@ function CustomInput({
             ? { maxWidth: "90%", width: "90%" }
             : { maxWidth: "100%", width: "100%" },
         ]}
-        className={`text-[16px]`}
-        placeholderTextColor={"#949494"}
+        className={`h-[100%] text-[16px] ${
+          styleType == "normal" ? "text-[#272727]" : "text-[#ffffff]"
+        }`}
+        placeholderTextColor={styleType == "normal" ? "#949494" : "#ffffff"}
         onChangeText={(text) => onInputHandler(text)}
       />
       {type == "password" && (

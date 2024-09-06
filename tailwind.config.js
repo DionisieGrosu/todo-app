@@ -14,6 +14,7 @@ module.exports = {
         mmedium: ["Montserrat-Medium"],
         msemibold: ["Montserrat-SemiBold"],
         sregular: ["SpaceMono-Regular"],
+        bregular: ["BebasNeue-Regular"],
       },
       colors: {
         "custom-orange": "#F79E89",
