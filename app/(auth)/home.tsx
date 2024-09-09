@@ -30,6 +30,7 @@ type Todo = {
 };
 function Home() {
   const [loading, setLoading] = useState<boolean>(false);
+  const [todoLoading, setTodoLoading] = useState<boolean>(false);
   const [showModal, setShowModal] = useState<boolean>(false);
   const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
   const [title, setTitle] = useState<string>("");
@@ -49,8 +50,10 @@ function Home() {
   type AddTodo = z.infer<typeof AddTodo>;
 
   useEffect(() => {
+    setTodoLoading(true);
     getTodos(filter)
       .then((result: any) => {
+        setTodoLoading(false);
         if (result.success && result.data) {
           setTodos(result.data);
         } else {
@@ -58,14 +61,17 @@ function Home() {
         }
       })
       .catch((error) => {
+        setTodoLoading(false);
         setTodos([]);
       });
   }, []);
 
   useFocusEffect(
     React.useCallback(() => {
+      setTodoLoading(true);
       getTodos(filter)
         .then((result: any) => {
+          setTodoLoading(false);
           if (result.success && result.data) {
             setTodos(result.data);
           } else {
@@ -73,14 +79,17 @@ function Home() {
           }
         })
         .catch((error) => {
+          setTodoLoading(false);
           setTodos([]);
         });
     }, [])
   );
 
   useEffect(() => {
+    setTodoLoading(true);
     getTodos(filter)
       .then((result: any) => {
+        setTodoLoading(false);
         if (result.success && result.data) {
           setTodos(result.data);
         } else {
@@ -88,6 +97,7 @@ function Home() {
         }
       })
       .catch((error) => {
+        setTodoLoading(false);
         setTodos([]);
       });
   }, [filter]);
@@ -173,7 +183,12 @@ function Home() {
             <View>
               <MenuPopup
                 data={[
-                  { text: "Profile", handler: () => {} },
+                  {
+                    text: "Profile",
+                    handler: () => {
+                      router.push("/(auth)/profile");
+                    },
+                  },
                   { text: "Exit", handler: () => signOutHandler() },
                 ]}
                 icon={
@@ -225,7 +240,9 @@ function Home() {
           </View>
           <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
             <View className="flex-1 px-[24px]">
-              {todos &&
+              {todoLoading && <Loader />}
+              {!todoLoading &&
+                todos &&
                 todos.map((item, index) => {
                   return (
                     <TodoItem

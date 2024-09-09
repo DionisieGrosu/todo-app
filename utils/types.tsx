@@ -14,6 +14,18 @@ export type ResetPassword = {
   email: string;
 };
 
+export type EditProfile = {
+  fullName: string;
+  email: string;
+  password: string;
+};
+
+export type EditPassword = {
+  password: string;
+  newPassword: string;
+  confirmPassword: string;
+};
+
 export type AddTodo = {
   title: string;
   description: string;

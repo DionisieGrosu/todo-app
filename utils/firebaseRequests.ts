@@ -5,6 +5,8 @@ import firestore, {
 import {
   AddTodo,
   DeleteTodo,
+  EditPassword as EditPasswordType,
+  EditProfile,
   EditTodo,
   GetTodo,
   ResetPassword,
@@ -94,7 +96,6 @@ export const signUp = async ({
     if (checkUser && checkUser?.docs && checkUser?.docs.length > 0) {
       userExists = true;
     }
-
     if (userExists) {
       firestore()
         .collection("Users")
@@ -119,11 +120,6 @@ export const signUp = async ({
                   message: "Something went wrong whilte trying to authonticate",
                 });
               }
-              reject({
-                success: true,
-                message: "Signed in successfuly!",
-                data: result,
-              });
             })
             .catch((error) => {
               console.log("Signin ERROR");
@@ -158,60 +154,61 @@ export const signUp = async ({
           });
         });
     } else {
-      firestore()
-        .collection("Users")
-        .add({
-          fullName: fullName,
-          email: email,
-        })
+      auth()
+        .createUserWithEmailAndPassword(email, password)
         .then((result) => {
-          auth()
-            .createUserWithEmailAndPassword(email, password)
-            .then((result) => {
-              if (result.user) {
-                resolve({
+          if (result.user) {
+            firestore()
+              .collection("Users")
+              .doc(result.user.uid)
+              .set({
+                fullName: fullName,
+                email: email,
+              })
+              .then((result) => {
+                result.user.resolve({
                   success: true,
                   message: "User is signed in!",
                   data: result.user,
                 });
-              } else {
+              })
+              .catch((error) => {
+                console.log("CREATE USER ERROR");
+                console.log(error);
                 reject({
                   success: false,
-                  message: "Something went wrong whilte trying to authonticate",
+                  message: "Something went wrong whilte trying to create user",
                 });
-              }
-              reject({
-                success: true,
-                message: "Signed in successfuly!",
-                data: result,
               });
-            })
-            .catch((error) => {
-              console.log("Signin ERROR");
-              console.log(error);
-              if (error.code === "auth/email-already-in-use") {
-                reject({
-                  success: false,
-                  message: "Email is already in use",
-                });
-              }
-
-              if (error.code === "auth/invalid-email") {
-                reject({ success: false, message: "That email is invalid" });
-              }
-
-              reject({
-                success: false,
-                message: "Something went wrong whilte trying to authonticate",
-              });
+          } else {
+            reject({
+              success: false,
+              message: "Something went wrong whilte trying to authonticate",
             });
+          }
+          reject({
+            success: true,
+            message: "Signed in successfuly!",
+            data: result,
+          });
         })
         .catch((error) => {
-          console.log("CREATE USER ERROR");
+          console.log("Signin ERROR");
           console.log(error);
+          if (error.code === "auth/email-already-in-use") {
+            reject({
+              success: false,
+              message: "Email is already in use",
+            });
+          }
+
+          if (error.code === "auth/invalid-email") {
+            reject({ success: false, message: "That email is invalid" });
+          }
+
           reject({
             success: false,
-            message: "Something went wrong whilte trying to create user",
+            message: "Something went wrong whilte trying to authonticate",
           });
         });
     }
@@ -262,6 +259,181 @@ export const resetPassword = ({ email }: ResetPassword) => {
         console.log(error);
         reject({ success: false, message: "User not found! Please Sign up" });
       });
+  });
+};
+
+export const getUserData = () => {
+  return new Promise((resolve, reject) => {
+    const user = auth().currentUser;
+    if (user) {
+      firestore()
+        .collection("Users")
+        .doc(auth().currentUser?.uid)
+        .get()
+        .then((result) => {
+          if (result.exists) {
+            resolve({ success: true, data: result.data() });
+          } else {
+            console.log("ERROR WHILE TRYING TO GET USER");
+            console.log(result);
+            reject({
+              success: false,
+              message: "User was not found or some error was occured",
+            });
+          }
+        })
+        .catch((error) => {
+          console.log("ERROR WHILE TRYING TO GET USER");
+          console.log(error);
+          reject({
+            success: false,
+            message: "User was not found or some error was occured",
+          });
+        });
+    } else {
+      reject({ success: false, message: "User is not logged in" });
+    }
+  });
+};
+
+export const editProfile = ({ fullName, email, password }: EditProfile) => {
+  return new Promise(async (resolve, reject) => {
+    const uid = auth().currentUser?.uid;
+    console.log("Email");
+    console.log(email);
+    if (uid) {
+      try {
+        const checkIfUserExists = await firestore()
+          .collection("Users")
+          .doc(uid)
+          .get();
+        if (!checkIfUserExists.exists) {
+          reject({
+            success: false,
+            message: "User was not found! Try to signup",
+          });
+        }
+        // const verifyEmail = await auth().currentUser?.verifyBeforeUpdateEmail(
+        //   email
+        // );
+        if (!auth().currentUser?.email) {
+          reject({ success: false, message: "User is not signed in" });
+        }
+
+        const provider = auth.EmailAuthProvider;
+        const authCredentials = provider.credential(
+          auth().currentUser?.email ?? "",
+          password
+        );
+
+        const reauthanticated =
+          await auth().currentUser?.reauthenticateWithCredential(
+            authCredentials
+          );
+
+        if (!reauthanticated?.user) {
+          reject("Something went wrong or password is incorrect");
+        }
+        const editUserResult = await auth().currentUser?.updateEmail(email);
+
+        const editResult = await firestore()
+          .collection("Users")
+          .doc(uid)
+          .update({ fullName, email });
+
+        const updatedUserData = await firestore()
+          .collection("Users")
+          .doc(uid)
+          .get();
+
+        if (!updatedUserData.exists) {
+          reject({
+            success: false,
+            message: "User was not found! Try to signup",
+          });
+        }
+
+        resolve({ success: true, data: updatedUserData.data() });
+      } catch (error) {
+        console.log("EDIT PROFILE ERROR");
+        console.log(error);
+        reject({
+          success: false,
+          message: "Something went wrong while trying to edit profile",
+        });
+      }
+    } else {
+      reject({ success: false, message: "User is not signed in!" });
+    }
+  });
+};
+
+export const editPassword = ({
+  newPassword,
+  password,
+  confirmPassword,
+}: EditPasswordType) => {
+  return new Promise(async (resolve, reject) => {
+    const uid = auth().currentUser?.uid;
+    if (uid) {
+      try {
+        const checkIfUserExists = await firestore()
+          .collection("Users")
+          .doc(uid)
+          .get();
+
+        if (!checkIfUserExists.exists) {
+          reject({
+            success: false,
+            message: "User was not found! Try to signup",
+          });
+        }
+
+        const prvider = auth.EmailAuthProvider;
+
+        if (!auth().currentUser?.email) {
+          reject({ success: false, message: "User is not authenticated" });
+        }
+
+        const authCredentials = prvider.credential(
+          auth().currentUser?.email ?? "",
+          password
+        );
+        const reuthanticate =
+          await auth().currentUser?.reauthenticateWithCredential(
+            authCredentials
+          );
+
+        if (!reuthanticate?.user) {
+          reject("Something went wrong or password is incorrect");
+        }
+
+        const editUserResult = await auth().currentUser?.updatePassword(
+          newPassword
+        );
+
+        const updatedUserData = await firestore()
+          .collection("Users")
+          .doc(uid)
+          .get();
+
+        if (!updatedUserData.exists) {
+          reject({
+            success: false,
+            message: "User was not found! Try to signup",
+          });
+        }
+
+        resolve({ success: true, data: updatedUserData.data() });
+      } catch (error) {
+        reject({
+          success: false,
+          message: "Something went wrong while trying to edit profile",
+        });
+      }
+    } else {
+      reject({ success: false, message: "User is not signed in!" });
+    }
   });
 };
 

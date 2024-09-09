@@ -19,6 +19,7 @@ function Layout() {
       <Stack>
         <Stack.Screen name="home" options={{ headerShown: false }} />
         <Stack.Screen name="todo/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="profile" options={{ headerShown: false }} />
       </Stack>
       <StatusBar translucent={true} backgroundColor="#fff" />
     </>
