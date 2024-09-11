@@ -25,6 +25,7 @@ import DropShadow from "react-native-drop-shadow";
 import CustomInput from "@/components/CustomInput";
 import MenuPopup from "@/components/MenuPopup";
 import { z } from "zod";
+import LogoutModal from "@/components/LogoutModal";
 
 function Profile() {
   const [loading, setLoading] = useState<boolean>(true);
@@ -45,6 +46,9 @@ function Profile() {
   const [showPasswordEditModal, setShoPasswordEditModal] =
     useState<boolean>(false);
 
+  const [editProfileLoading, setEditProfileLoading] = useState(false);
+  const [editPasswordLoading, setEditPasswordLoading] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const user = auth().currentUser;
 
   useEffect(() => {
@@ -79,6 +83,14 @@ function Profile() {
       .string()
       .min(3, "Email must contain at least 3 characters")
       .email("Email is invalid"),
+    password: z
+      .string()
+      .min(8, "The password must be at least 8 characters long")
+      .max(32, "The password must be a maximun 32 characters")
+      .regex(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%&*-\.])[A-Za-z\d!@#$%&*-\.]{8,}$/,
+        "The Password is invalid"
+      ),
   });
 
   const EditPassword = z.object({
@@ -114,9 +126,11 @@ function Profile() {
   const editProfileHandler = () => {
     setFullNameError(false);
     setEmailError(false);
+    setPasswordError(false);
     let validate = EditProfile.safeParse({
       fullName,
       email,
+      password,
     });
     let errors = false;
     if (!validate.success) {
@@ -127,6 +141,10 @@ function Profile() {
         }
         if (validate.error?.formErrors.fieldErrors.email) {
           setEmailError(true);
+        }
+
+        if (validate.error?.formErrors.fieldErrors.password) {
+          setPasswordError(true);
         }
       }
       if (validate.error.issues[0]) {
@@ -140,8 +158,10 @@ function Profile() {
     }
 
     if (!errors) {
+      setEditProfileLoading(true);
       editProfile({ fullName, email, password })
         .then((result) => {
+          setEditProfileLoading(false);
           setShowEditModal(false);
           if (result.success) {
             if (result.data.fullName) {
@@ -160,6 +180,7 @@ function Profile() {
           }
         })
         .catch((error) => {
+          setEditProfileLoading(false);
           setShowEditModal(false);
           if (error.message) {
             Toast.show(error.message, {
@@ -177,6 +198,9 @@ function Profile() {
   const editPasswordHandler = () => {
     setFullNameError(false);
     setEmailError(false);
+    setNewPasswordError(false);
+    setPasswordError(false);
+    setConfirmPasswordError(false);
     let validate = EditPassword.safeParse({
       newPassword,
       password,
@@ -198,7 +222,7 @@ function Profile() {
       }
       if (validate.error.issues[0]) {
         if (validate.error.issues[0]?.message) {
-          setShowEditModal(false);
+          setShoPasswordEditModal(false);
           Toast.show(validate.error.issues[0]?.message, {
             type: "danger",
           });
@@ -207,8 +231,10 @@ function Profile() {
     }
 
     if (!errors) {
+      setEditPasswordLoading(true);
       editPassword({ newPassword, password, confirmPassword })
         .then((result) => {
+          setEditPasswordLoading(false);
           setShoPasswordEditModal(false);
           if (result.success) {
             Toast.show("Password updated successfuly!", {
@@ -221,6 +247,7 @@ function Profile() {
           }
         })
         .catch((error) => {
+          setEditPasswordLoading(false);
           setShoPasswordEditModal(false);
           if (error.message) {
             Toast.show(error.message, {
@@ -305,7 +332,10 @@ function Profile() {
                 </View>
               </View>
               <View>
-                <CustomButton buttonClassName="mt-[40px]" handler={() => {}}>
+                <CustomButton
+                  buttonClassName="mt-[40px]"
+                  handler={() => setShowLogoutModal(true)}
+                >
                   Log out
                 </CustomButton>
               </View>
@@ -341,37 +371,44 @@ function Profile() {
                       <Text className="text-center font-msemibold text-custom-orange text-[25px] mb-[50px] mt-[20px] uppercase">
                         Edit Profile
                       </Text>
-                      <KeyboardAvoidingView
-                        behavior={Platform.OS === "ios" ? "padding" : "height"}
-                      >
-                        <CustomInput
-                          value={fullName}
-                          label="Full Name"
-                          error={fullNameError}
-                          onInputHandler={setFullName}
-                        />
-                        <CustomInput
-                          value={email}
-                          label="Email"
-                          type="email"
-                          error={emailError}
-                          onInputHandler={setEmail}
-                        />
-                        <CustomInput
-                          value={password}
-                          label="Password"
-                          type="password"
-                          error={passwordError}
-                          onInputHandler={setPassword}
-                        />
-                      </KeyboardAvoidingView>
+                      {editProfileLoading && <Loader />}
+                      {!editProfileLoading && (
+                        <>
+                          <KeyboardAvoidingView
+                            behavior={
+                              Platform.OS === "ios" ? "padding" : "height"
+                            }
+                          >
+                            <CustomInput
+                              value={fullName}
+                              label="Full Name"
+                              error={fullNameError}
+                              onInputHandler={setFullName}
+                            />
+                            <CustomInput
+                              value={email}
+                              label="Email"
+                              type="email"
+                              error={emailError}
+                              onInputHandler={setEmail}
+                            />
+                            <CustomInput
+                              value={password}
+                              label="Password"
+                              type="password"
+                              error={passwordError}
+                              onInputHandler={setPassword}
+                            />
+                          </KeyboardAvoidingView>
 
-                      <CustomButton
-                        buttonClassName="mb-[16px]"
-                        handler={() => editProfileHandler()}
-                      >
-                        Save
-                      </CustomButton>
+                          <CustomButton
+                            buttonClassName="mb-[16px]"
+                            handler={() => editProfileHandler()}
+                          >
+                            Save
+                          </CustomButton>
+                        </>
+                      )}
                     </View>
                   </View>
                 </DropShadow>
@@ -409,44 +446,57 @@ function Profile() {
                       <Text className="text-center font-msemibold text-custom-orange text-[25px] mb-[50px] mt-[20px] uppercase">
                         Edit Password
                       </Text>
-                      <KeyboardAvoidingView
-                        behavior={Platform.OS === "ios" ? "padding" : "height"}
-                      >
-                        <CustomInput
-                          value={password}
-                          label="Password"
-                          type="password"
-                          error={passwordError}
-                          onInputHandler={setPassword}
-                        />
-                        <CustomInput
-                          value={newPassword}
-                          label="New Password"
-                          type="password"
-                          error={newPasswordError}
-                          onInputHandler={setNewPassword}
-                        />
-                        <CustomInput
-                          value={confirmPassword}
-                          label="Confirm Password"
-                          type="password"
-                          error={confirmPasswordError}
-                          onInputHandler={setConfirmPassword}
-                        />
-                      </KeyboardAvoidingView>
+                      {editPasswordLoading && <Loader />}
+                      {!editPasswordLoading && (
+                        <>
+                          <KeyboardAvoidingView
+                            behavior={
+                              Platform.OS === "ios" ? "padding" : "height"
+                            }
+                          >
+                            <CustomInput
+                              value={password}
+                              label="Password"
+                              type="password"
+                              error={passwordError}
+                              onInputHandler={setPassword}
+                            />
+                            <CustomInput
+                              value={newPassword}
+                              label="New Password"
+                              type="password"
+                              error={newPasswordError}
+                              onInputHandler={setNewPassword}
+                            />
+                            <CustomInput
+                              value={confirmPassword}
+                              label="Confirm Password"
+                              type="password"
+                              error={confirmPasswordError}
+                              onInputHandler={setConfirmPassword}
+                            />
+                          </KeyboardAvoidingView>
 
-                      <CustomButton
-                        buttonClassName="mb-[16px]"
-                        handler={() => editPasswordHandler()}
-                      >
-                        Save
-                      </CustomButton>
+                          <CustomButton
+                            buttonClassName="mb-[16px]"
+                            handler={() => editPasswordHandler()}
+                          >
+                            Save
+                          </CustomButton>
+                        </>
+                      )}
                     </View>
                   </View>
                 </DropShadow>
               </View>
             </Modal>
           </View>
+          {showLogoutModal && (
+            <LogoutModal
+              show={showLogoutModal}
+              closeHandler={() => setShowLogoutModal(false)}
+            />
+          )}
         </View>
       </SafeAreaView>
     );

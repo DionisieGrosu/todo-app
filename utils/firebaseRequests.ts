@@ -1,5 +1,7 @@
 import auth from "@react-native-firebase/auth";
 import firestore, {
+  FieldPath,
+  Filter,
   FirebaseFirestoreTypes,
 } from "@react-native-firebase/firestore";
 import {
@@ -38,11 +40,11 @@ export const signIn = ({ email, password }: SignIn) => {
                   message: "Something went wrong whilte trying to authonticate",
                 });
               }
-              reject({
-                success: true,
-                message: "Signed in successfuly!",
-                data: result,
-              });
+              // reject({
+              //   success: true,
+              //   message: "Signed in successfuly!",
+              //   data: result,
+              // });
             })
             .catch((error) => {
               console.log("Signin ERROR");
@@ -186,11 +188,11 @@ export const signUp = async ({
               message: "Something went wrong whilte trying to authonticate",
             });
           }
-          reject({
-            success: true,
-            message: "Signed in successfuly!",
-            data: result,
-          });
+          // reject({
+          //   success: true,
+          //   message: "Signed in successfuly!",
+          //   data: result,
+          // });
         })
         .catch((error) => {
           console.log("Signin ERROR");
@@ -439,14 +441,31 @@ export const editPassword = ({
 
 export const getTodos = (filter: "all" | "by_time" | "by_deadline" = "all") => {
   return new Promise((resolve, reject) => {
+    const user = auth().currentUser;
+    if (!user) {
+      reject({ success: false, message: "You are not logged in!" });
+    }
+    const uid = user.uid;
     let queryResult = firestore().collection("Todos");
+    let filters = [];
     if (filter == "by_time") {
-      queryResult = queryResult.where("date", "==", "");
+      filters.push(Filter("date", "==", ""));
+      // queryResult = queryResult.where("date", "==", "");
     }
     if (filter == "by_deadline") {
-      queryResult = queryResult.where("date", "!=", "");
+      filters.push(Filter("date", "!=", ""));
+      // queryResult = queryResult.where("date", "!=", "");
     }
-    queryResult
+
+    filters.push(Filter("uid", "==", uid));
+    let whereClause = queryResult.where("uid", "==", uid);
+
+    if (filters.length > 1) {
+      whereClause = queryResult.where(Filter.and(...filters));
+    } else {
+      whereClause = queryResult.where(filters[0]);
+    }
+    whereClause
       .get()
       .then((result) => {
         let TodosData: FirebaseFirestoreTypes.DocumentData[] = [];
@@ -467,7 +486,34 @@ export const getTodos = (filter: "all" | "by_time" | "by_deadline" = "all") => {
 };
 
 export const getTodoById = ({ id }: { id: string }) => {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
+    const user = auth().currentUser;
+    if (!user) {
+      reject({ success: false, message: "You are not logged in!" });
+    }
+    const uid = user.uid;
+    try {
+      const checkIfOperationAlloed = await firestore()
+        .collection("Todos")
+        .where(firestore.FieldPath.documentId(), "==", id)
+        .where("uid", "==", uid)
+        .get();
+
+      if (checkIfOperationAlloed.size <= 0) {
+        reject({
+          success: false,
+          message: "You are not authorized to do this action",
+        });
+      }
+    } catch (error) {
+      console.log("CHECK OPERATION ERROR");
+      console.log(error);
+      reject({
+        success: false,
+        message: "You are not authorized to do this action",
+      });
+    }
+
     firestore()
       .collection("Todos")
       .doc(id)
@@ -492,9 +538,15 @@ export const getTodoById = ({ id }: { id: string }) => {
 
 export const addNewTodo = ({ title, description, date = "" }: AddTodo) => {
   return new Promise(async (resolve, reject) => {
+    const user = auth().currentUser;
+    if (!user) {
+      reject({ success: false, message: "You are not logged in!" });
+    }
+    const uid = user.uid;
     firestore()
       .collection("Todos")
       .add({
+        uid: uid,
         title,
         description,
         date,
@@ -503,6 +555,7 @@ export const addNewTodo = ({ title, description, date = "" }: AddTodo) => {
       .then(() => {
         firestore()
           .collection("Todos")
+          .where("uid", "==", uid)
           .get()
           .then((result) => {
             console.log("ADDED TODO RESULT DATA");
@@ -535,6 +588,33 @@ export const addNewTodo = ({ title, description, date = "" }: AddTodo) => {
 
 export const editTodo = ({ id, title, description, date = "" }: EditTodo) => {
   return new Promise(async (resolve, reject) => {
+    const user = auth().currentUser;
+    if (!user) {
+      reject({ success: false, message: "You are not logged in!" });
+    }
+    const uid = user.uid;
+    try {
+      const checkIfOperationAlloed = await firestore()
+        .collection("Todos")
+        .where(firestore.FieldPath.documentId(), "==", id)
+        .where("uid", "==", uid)
+        .get();
+
+      if (checkIfOperationAlloed.size <= 0) {
+        reject({
+          success: false,
+          message: "You are not authorized to do this action",
+        });
+      }
+    } catch (error) {
+      console.log("CHECK OPERATION ERROR");
+      console.log(error);
+      reject({
+        success: false,
+        message: "You are not authorized to do this action",
+      });
+    }
+
     firestore()
       .collection("Todos")
       .doc(id)
@@ -593,13 +673,42 @@ export const editTodo = ({ id, title, description, date = "" }: EditTodo) => {
 };
 
 export const deleteTodo = ({ id }: DeleteTodo) => {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
+    const user = auth().currentUser;
+    if (!user) {
+      reject({ success: false, message: "You are not logged in!" });
+    }
+    const uid = user.uid;
+    try {
+      const checkIfOperationAlloed = await firestore()
+        .collection("Todos")
+        .where(firestore.FieldPath.documentId(), "==", id)
+        .where("uid", "==", uid)
+        .get();
+
+      if (checkIfOperationAlloed.size <= 0) {
+        reject({
+          success: false,
+          message: "You are not authorized to do this action",
+        });
+      }
+    } catch (error) {
+      console.log("CHECK OPERATION ERROR");
+      console.log(error);
+      reject({
+        success: false,
+        message: "You are not authorized to do this action",
+      });
+    }
     firestore()
       .collection("Todos")
       .doc(id)
       .delete()
       .then((result) => {
-        resolve({ success: true, message: "Todo was deleted successfuly!" });
+        resolve({
+          success: true,
+          message: "Todo was deleted successfuly!",
+        });
       })
       .catch((error) => {
         console.log("ERROR WHILE TRYING TO DELETE TODO");

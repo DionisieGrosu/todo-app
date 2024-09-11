@@ -20,6 +20,7 @@ import { addNewTodo, getTodos } from "@/utils/firebaseRequests";
 import { z } from "zod";
 import { Toast } from "react-native-toast-notifications";
 import auth from "@react-native-firebase/auth";
+import LogoutModal from "@/components/LogoutModal";
 
 type Todo = {
   id: string;
@@ -41,6 +42,7 @@ function Home() {
   const [filter, setFilter] = useState<"all" | "by_time" | "by_deadline">(
     "all"
   );
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   // const navigation = useNavigation();
   // const focused = navigation.isFocused();
 
@@ -189,7 +191,7 @@ function Home() {
                       router.push("/(auth)/profile");
                     },
                   },
-                  { text: "Exit", handler: () => signOutHandler() },
+                  { text: "Exit", handler: () => setShowLogoutModal(true) },
                 ]}
                 icon={
                   <Image
@@ -345,6 +347,12 @@ function Home() {
               </View>
             </Modal>
           </View>
+          {showLogoutModal && (
+            <LogoutModal
+              show={showLogoutModal}
+              closeHandler={() => setShowLogoutModal(false)}
+            />
+          )}
         </View>
       </SafeAreaView>
     );
